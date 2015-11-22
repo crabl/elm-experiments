@@ -1,6 +1,11 @@
 -- doing the tutorial at http://elm-lang.org/blog/making-pong
-import Time exposing (..)
+import Color exposing (..)
+import Graphics.Collage exposing (..)
+import Graphics.Element exposing (..)
 import Keyboard
+import Time exposing (..)
+import Text exposing (..)
+import Window
 
 type alias Input =
   { space: Bool,
@@ -84,7 +89,7 @@ defaultGame =
 -- collision detection system
 -- are objects n and m within distance d of each other?
 near : Float -> Float -> Float -> Bool
-near n m d =
+near n d m =
   m >= (n - d) && m <= (n + d)
 
 -- is the ball contained within the paddle
@@ -108,26 +113,26 @@ stepObj : Time -> GameObject a -> GameObject a
 -- the {} as blah syntax is object destructuring with a
 -- 'rest' parameter, called obj in this case, using
 -- a union type as the foundation here
-stepObj t ({x, y, vx, vy} as obj) =
+stepObj dt obj =
   { obj |
-    x = x + vx * t,
-    y = y + vy * t
+    x = obj.x + obj.vx * dt,
+    y = obj.y + obj.vy * dt
   }
 
 -- move a ball forward, detecting collisions with either
 -- paddle and updating the position, use the `` operator
 -- to perform infix `within` operations
 stepBall : Time -> Ball -> Player -> Player -> Ball
-stepBall t ({x, y, vx, vy} as ball) left_paddle right_paddle =
-  if not (ball.x |> near 0 halfWidth)
-    then { ball | x = 0, y = 0 }
+stepBall t ball left_paddle right_paddle =
+  if not (near 0 halfWidth ball.x) then
+    { ball | x = 0, y = 0 }
   else
     stepObj t
       { ball |
         vx =
-          stepV vx (ball `within` left_paddle) (ball `within` right_paddle),
+          stepV ball.vx (within ball left_paddle) (within ball right_paddle),
         vy =
-          stepV vy (y < 7 - halfHeight) (y > halfHeight - 7)
+          stepV ball.vy (ball.y < 7 - halfHeight) (ball.y > halfHeight - 7)
       }
 
 -- step player forward in time making sure it doesn't
@@ -172,3 +177,42 @@ stepGame input game =
         left_player = left_player',
         right_player = right_player'
     }
+
+-- wrap it all together in a reducer!
+gameState : Signal Game
+gameState =
+  Signal.foldp stepGame defaultGame input
+
+-- helper values
+pongGreen = rgb 60 60 100
+textGreen = rgb 160 160 200
+txt f = leftAligned << f << monospace << Text.color textGreen << fromString
+msg = "SPACE to start, WS and &uarr;&darr; to move"
+
+-- shared function for rendering game objects
+displayObj : GameObject a -> Shape -> Form
+displayObj obj shape =
+  move (obj.x, obj.y) (filled white shape)
+
+-- display a game state
+display : (Int, Int) -> Game -> Element
+display (w, h) {state, ball, left_player, right_player} =
+  let
+    scores : Element
+    scores = toString left_player.score ++ "  " ++ toString right_player.score
+      |> txt (Text.height 50)
+  in
+    container w h middle <|
+      collage gameWidth gameHeight
+        [ filled pongGreen (rect gameWidth gameHeight),
+          displayObj ball (oval 15 15),
+          displayObj left_player (rect 10 40),
+          displayObj right_player (rect 10 40),
+          toForm scores
+            |> move (0, gameHeight / 2 - 40),
+          toForm (if state == Playing then spacer 1 1 else txt identity msg)
+            |> move (0, 40 - gameHeight / 2)
+        ]
+
+main =
+  Signal.map2 display Window.dimensions gameState
