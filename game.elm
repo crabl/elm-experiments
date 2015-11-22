@@ -123,11 +123,11 @@ stepObj dt obj =
 -- paddle and updating the position, use the `` operator
 -- to perform infix `within` operations
 stepBall : Time -> Ball -> Player -> Player -> Ball
-stepBall t ball left_paddle right_paddle =
+stepBall dt ball left_paddle right_paddle =
   if not (near 0 halfWidth ball.x) then
     { ball | x = 0, y = 0 }
   else
-    stepObj t
+    stepObj dt
       { ball |
         vx =
           stepV ball.vx (within ball left_paddle) (within ball right_paddle),
@@ -138,8 +138,8 @@ stepBall t ball left_paddle right_paddle =
 -- step player forward in time making sure it doesn't
 -- fly off the screen at any point in time
 stepPlayer : Time -> Int -> Int -> Player -> Player
-stepPlayer t direction points player =
-  let player' = stepObj t { player | vy = toFloat direction * 200}
+stepPlayer dt direction points player =
+  let player' = stepObj dt { player | vy = toFloat direction * 200}
       y' = clamp (22 - halfHeight) (halfHeight - 22) player'.y
       score' = player.score + points
   in
