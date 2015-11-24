@@ -3,7 +3,7 @@ import Graphics.Collage exposing (..)
 import Graphics.Element exposing (..)
 import Keyboard
 import List exposing (..)
-import Random
+import Random exposing (..)
 import Time exposing (..)
 import Text exposing (..)
 import Window
@@ -78,9 +78,13 @@ input =
       delta
       rand
 
+generateRandom : Float -> Int
+generateRandom seed =
+  (fst <| generate (int -250 250) (initialSeed <| round seed))
+
 rand : Signal Int
 rand =
-  Signal.map (Random.generate <| Random.int -250 250) (every 1000)
+  Signal.map generateRandom (fps 1)
 
 delta : Signal Time
 delta =
@@ -101,8 +105,8 @@ play : Input -> Game -> Game
 play input game =
   { game |
     state = updateState game,
-    bird = updateBird game,
-    pipes = updatePipes game
+    bird = updateBird input game,
+    pipes = updatePipes input game
   }
 
 updateState : Game -> State
@@ -118,11 +122,11 @@ moving {time} obj =
     y = obj.y + obj.vy * time
   }
 
-updateBird : Game -> Bird
-updateBird {bird} = bird
+updateBird : Input -> Game -> Bird
+updateBird input {bird} = bird
 
-updatePipes : Game -> List Pipe
-updatePipes {pipes} = pipes
+updatePipes : Input -> Game -> List Pipe
+updatePipes input {pipes} = pipes
 
 wait : Input -> Game -> Game
 wait ({space} as input) game =
