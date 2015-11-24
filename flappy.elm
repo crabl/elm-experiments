@@ -2,6 +2,8 @@ import Color exposing (..)
 import Graphics.Collage exposing (..)
 import Graphics.Element exposing (..)
 import Keyboard
+import List exposing (..)
+import Random
 import Time exposing (..)
 import Text exposing (..)
 import Window
@@ -10,6 +12,8 @@ import Window
 
 (gameWidth, gameHeight) = (600, 400)
 (halfWidth, halfHeight) = (gameWidth / 2, gameHeight / 2)
+gravity = -1.8
+pipeInterval = 80
 
 -- MARK: model
 
@@ -46,23 +50,15 @@ type alias Game =
     pipes: List Pipe
   }
 
+-- MARK: convenience methods
+
+near : Float -> Float -> Float -> Bool
+near n d m = m >= (n - d) && m <= (n + d)
+
+colliding a b =
+  True
+
 -- MARK: update
-
-stepGame: Input -> Game -> Game
-stepGame input game =
-  let
-    {space} = input
-    {state, bird, pipes} = game
-
-    state' = state
-    bird' = bird
-    pipes' = pipes
-  in
-  { game |
-    state = state',
-    bird = bird',
-    pipes = pipes'
-  }
 
 initialState : Game
 initialState =
@@ -71,26 +67,6 @@ initialState =
     bird = {x = 0, y = 0, vx = 0, vy = 0, width = 15, height = 15},
     pipes = []
   }
-
-gameState : Signal Game
-gameState =
-  Signal.foldp stepGame initialState input
-
--- MARK: view
-displayObj : Object a -> Shape -> Form
-displayObj obj shape =
-  move (obj.x, obj.y) (filled white shape)
-
-backgroundColor = rgb 20 20 155
-whiteColor = rgb 255 255 255
-txt f = leftAligned << f << monospace << Text.color whiteColor << fromString
-msg = "SPACE to start"
-
--- display a game state
-
-delta : Signal Time
-delta =
-  Signal.map inSeconds (fps 60)
 
 -- NOTE: |> and <| are aliases for function appliaction
 -- so f <| x = f x
@@ -101,6 +77,53 @@ input =
     Signal.map2 Input
       Keyboard.space
       delta
+
+delta : Signal Time
+delta =
+  Signal.map inSeconds (fps 60)
+
+gameState : Signal Game
+gameState =
+  Signal.foldp step initialState input
+
+step: Input -> Game -> Game
+step input game =
+  case game.state of
+    Playing -> play input game
+    Waiting -> wait input game
+    Dead -> die input game
+
+play : Input -> Game -> Game
+play input game = game
+
+updateState : Game -> State
+updateState {bird, pipes} =
+  if any (colliding bird) pipes
+  then Dead
+  else Playing
+
+wait : Input -> Game -> Game
+wait ({space} as input) game =
+  if space
+  then play input game
+  else game
+
+die : Input -> Game -> Game
+die input game = game
+
+
+-- MARK: view
+
+displayObj : Object a -> Shape -> Form
+displayObj obj shape =
+  move (obj.x, obj.y) (filled white shape)
+
+backgroundColor = rgb 20 20 155
+whiteColor = rgb 255 255 255
+txt f = leftAligned << f << monospace << Text.color whiteColor << fromString
+msg = "SPACE to start"
+
+-- display a game state
 
 display : (Int, Int) -> Game -> Element
 display (w, h) {state, bird, pipes} =
