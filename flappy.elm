@@ -12,7 +12,8 @@ import Window
 
 (gameWidth, gameHeight) = (600, 400)
 (halfWidth, halfHeight) = (gameWidth / 2, gameHeight / 2)
-gravity = -1.8
+gravity = -9.81
+flapVelocity = 250
 pipeInterval = 80
 
 -- MARK: model
@@ -56,7 +57,7 @@ near : Float -> Float -> Float -> Bool
 near n d m = m >= (n - d) && m <= (n + d)
 
 colliding a b =
-  True
+  False
 
 -- MARK: update
 
@@ -80,11 +81,11 @@ input =
 
 generateRandom : Float -> Int
 generateRandom seed =
-  (fst <| generate (int -250 250) (initialSeed <| round seed))
+  fst <| generate (int -250 250) (initialSeed <| round seed)
 
 rand : Signal Int
 rand =
-  Signal.map generateRandom (fps 1)
+  Signal.map generateRandom (fps 60)
 
 delta : Signal Time
 delta =
@@ -115,15 +116,27 @@ updateState {bird, pipes} =
   then Dead
   else Playing
 
-
+moving : Input -> Object a -> Object a
 moving {time} obj =
   { obj |
     x = obj.x + obj.vx * time,
     y = obj.y + obj.vy * time
   }
 
+flapping : Input -> Object a -> Object a
+flapping {space} obj =
+  { obj |
+    vy = if space then flapVelocity else obj.vy
+  }
+
+falling : Input -> Object a -> Object a
+falling {time} obj =
+  { obj |
+    vy = obj.vy + gravity * (time * 120) ^ 2
+  }
+
 updateBird : Input -> Game -> Bird
-updateBird input {bird} = bird
+updateBird input {bird} = moving input << flapping input << falling input <| bird
 
 updatePipes : Input -> Game -> List Pipe
 updatePipes input {pipes} = pipes
