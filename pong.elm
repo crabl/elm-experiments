@@ -32,7 +32,7 @@ input =
 
 -- define the playable area and add half measures for
 -- convenience later on
-(gameWidth, gameHeight) = (600, 400)
+(gameWidth, gameHeight) = (600, 500)
 (halfWidth, halfHeight) = (gameWidth / 2, gameHeight / 2)
 
 -- all objects in our game can be modeled as such,
