@@ -19,7 +19,8 @@ pipeInterval = 80
 
 type alias Input =
   { space: Bool,
-    delta: Time
+    time: Time,
+    rand: Int
   }
 
 type alias Object a =
@@ -44,8 +45,7 @@ type alias Pipe =
 type State = Waiting | Playing | Dead
 
 type alias Game =
-  {
-    state: State,
+  { state: State,
     bird: Bird,
     pipes: List Pipe
   }
@@ -62,8 +62,7 @@ colliding a b =
 
 initialState : Game
 initialState =
-  {
-    state = Waiting,
+  { state = Waiting,
     bird = {x = 0, y = 0, vx = 0, vy = 0, width = 15, height = 15},
     pipes = []
   }
@@ -74,9 +73,14 @@ initialState =
 input : Signal Input
 input =
   Signal.sampleOn delta <|
-    Signal.map2 Input
+    Signal.map3 Input
       Keyboard.space
       delta
+      rand
+
+rand : Signal Int
+rand =
+  Signal.map (Random.generate <| Random.int -250 250) (every 1000)
 
 delta : Signal Time
 delta =
@@ -94,13 +98,31 @@ step input game =
     Dead -> die input game
 
 play : Input -> Game -> Game
-play input game = game
+play input game =
+  { game |
+    state = updateState game,
+    bird = updateBird game,
+    pipes = updatePipes game
+  }
 
 updateState : Game -> State
 updateState {bird, pipes} =
   if any (colliding bird) pipes
   then Dead
   else Playing
+
+
+moving {time} obj =
+  { obj |
+    x = obj.x + obj.vx * time,
+    y = obj.y + obj.vy * time
+  }
+
+updateBird : Game -> Bird
+updateBird {bird} = bird
+
+updatePipes : Game -> List Pipe
+updatePipes {pipes} = pipes
 
 wait : Input -> Game -> Game
 wait ({space} as input) game =
@@ -115,8 +137,7 @@ die input game = game
 -- MARK: view
 
 displayObj : Object a -> Shape -> Form
-displayObj obj shape =
-  move (obj.x, obj.y) (filled white shape)
+displayObj obj shape = move (obj.x, obj.y) (filled white shape)
 
 backgroundColor = rgb 20 20 155
 whiteColor = rgb 255 255 255
